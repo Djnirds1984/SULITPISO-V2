@@ -1,19 +1,31 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Card from '../components/Card';
 import { GpioPin } from '../types';
 
-const orangePiPins = Array.from({ length: 26 }, (_, i) => i + 1); // Mock GPIO pins 1-26
-
-const initialPins: GpioPin[] = [
-  { id: 'coin_acceptor', function: 'Coin Acceptor Pulse', pin: 5 },
-  { id: 'led_ready', function: 'LED Indicator - Ready', pin: 7 },
-  { id: 'led_active', function: 'LED Indicator - Active Session', pin: 8 },
-  { id: 'relay_control', function: 'Internet Relay Control', pin: 10 },
-];
+const orangePiPins = Array.from({ length: 26 }, (_, i) => i + 1);
 
 const GpioAssignment: React.FC = () => {
-  const [pinAssignments, setPinAssignments] = useState<GpioPin[]>(initialPins);
+  const [pinAssignments, setPinAssignments] = useState<GpioPin[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchPins = async () => {
+      try {
+        setLoading(true);
+        const response = await fetch('/api/gpio.php');
+        const result = await response.json();
+        if (result.status === 'success') {
+          setPinAssignments(result.data);
+        }
+      } catch (error) {
+        console.error("Failed to fetch GPIO assignments:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchPins();
+  }, []);
 
   const handlePinChange = (id: string, newPin: number) => {
     setPinAssignments((prev) =>
@@ -21,11 +33,27 @@ const GpioAssignment: React.FC = () => {
     );
   };
 
-  const handleSave = () => {
-    // Mock save
-    console.log(pinAssignments);
-    alert('GPIO assignments saved!');
+  const handleSave = async () => {
+    try {
+      const response = await fetch('/api/gpio.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(pinAssignments)
+      });
+      const result = await response.json();
+      if (result.status === 'success') {
+        alert('GPIO assignments saved!');
+      } else {
+        throw new Error(result.message);
+      }
+    } catch (error) {
+      alert(`Error saving assignments: ${(error as Error).message}`);
+    }
   };
+
+  if (loading) {
+    return <div>Loading GPIO assignments...</div>
+  }
 
   return (
     <div className="animate-fade-in">

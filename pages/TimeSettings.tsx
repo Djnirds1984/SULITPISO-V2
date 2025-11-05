@@ -6,22 +6,79 @@ const TimeSettings: React.FC = () => {
   const [ntpServer, setNtpServer] = useState('pool.ntp.org');
   const [isNtpEnabled, setIsNtpEnabled] = useState(true);
   const [currentTime, setCurrentTime] = useState(new Date());
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const timer = setInterval(() => setCurrentTime(new Date()), 1000);
-    return () => clearInterval(timer);
+    const fetchSettings = async () => {
+      try {
+        setLoading(true);
+        const response = await fetch('/api/time.php');
+        const result = await response.json();
+        if (result.status === 'success') {
+          setNtpServer(result.data.ntpServer);
+          setIsNtpEnabled(result.data.isNtpEnabled);
+          setCurrentTime(new Date(result.data.currentTime));
+        }
+      } catch (error) {
+        console.error("Failed to fetch time settings:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchSettings();
   }, []);
 
-  const handleSave = () => {
-    // Mock save
-    console.log({ ntpServer, isNtpEnabled });
-    alert('Time settings saved!');
+  useEffect(() => {
+    const timer = setInterval(() => setCurrentTime(prev => new Date(prev.getTime() + 1000)), 1000);
+    return () => clearInterval(timer);
+  }, [currentTime]);
+
+  const handleSave = async () => {
+    try {
+      const response = await fetch('/api/time.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ntpServer, isNtpEnabled }),
+      });
+      const result = await response.json();
+      if (result.status === 'success') {
+        alert('Time settings saved!');
+      } else {
+        throw new Error(result.message);
+      }
+    } catch (error) {
+      alert(`Error saving: ${(error as Error).message}`);
+    }
   };
 
-  const handleSync = () => {
-    // Mock sync
+  const handleSync = async () => {
     alert('Syncing time with NTP server...');
+    try {
+      const response = await fetch('/api/time.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'sync' }),
+      });
+      const result = await response.json();
+      if (result.status === 'success') {
+        alert('Sync successful!');
+        // Refetch time to update display
+        const res = await fetch('/api/time.php');
+        const timeResult = await res.json();
+        if (timeResult.status === 'success') {
+            setCurrentTime(new Date(timeResult.data.currentTime));
+        }
+      } else {
+        throw new Error(result.message);
+      }
+    } catch (error) {
+      alert(`Error syncing: ${(error as Error).message}`);
+    }
   };
+
+  if (loading) {
+    return <div>Loading time settings...</div>;
+  }
 
   return (
     <div className="animate-fade-in">
@@ -29,7 +86,7 @@ const TimeSettings: React.FC = () => {
       
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <Card title="NTP Configuration">
-          <form className="space-y-6">
+          <div className="space-y-6">
             <div>
               <label htmlFor="ntp-server" className="block text-sm font-medium text-gray-300 mb-1">
                 NTP Server
@@ -74,7 +131,7 @@ const TimeSettings: React.FC = () => {
                 Save
               </button>
             </div>
-          </form>
+          </div>
         </Card>
 
         <Card title="Current System Time">

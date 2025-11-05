@@ -1,19 +1,71 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Card from '../components/Card';
 
-const SystemSettings: React.FC = () => {
-  const [ssid, setSsid] = useState('PisoFi_Hotspot');
-  const [password, setPassword] = useState('admin1234');
-  const [uploadLimit, setUploadLimit] = useState(5);
-  const [downloadLimit, setDownloadLimit] = useState(10);
+interface Settings {
+  ssid: string;
+  password?: string; // Password might not be sent back from API for security
+  uploadLimit: number;
+  downloadLimit: number;
+}
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    // Mock save operation
-    console.log({ ssid, password, uploadLimit, downloadLimit });
-    alert('System settings saved!');
+const SystemSettings: React.FC = () => {
+  const [settings, setSettings] = useState<Settings>({
+    ssid: '',
+    password: '',
+    uploadLimit: 0,
+    downloadLimit: 0,
+  });
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchSettings = async () => {
+      try {
+        setLoading(true);
+        const response = await fetch('/api/settings.php');
+        const result = await response.json();
+        if (result.status === 'success') {
+          setSettings(result.data);
+        }
+      } catch (error) {
+        console.error("Failed to fetch settings:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchSettings();
+  }, []);
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { id, value, type } = e.target;
+    setSettings(prev => ({
+      ...prev,
+      [id]: type === 'number' ? Number(value) : value,
+    }));
   };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      const response = await fetch('/api/settings.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(settings),
+      });
+      const result = await response.json();
+      if (result.status === 'success') {
+        alert('System settings saved!');
+      } else {
+        throw new Error(result.message || 'Failed to save settings');
+      }
+    } catch (error) {
+      alert(`Error saving settings: ${(error as Error).message}`);
+    }
+  };
+
+  if (loading) {
+    return <div>Loading settings...</div>;
+  }
 
   return (
     <div className="animate-fade-in">
@@ -27,8 +79,8 @@ const SystemSettings: React.FC = () => {
             <input
               type="text"
               id="ssid"
-              value={ssid}
-              onChange={(e) => setSsid(e.target.value)}
+              value={settings.ssid}
+              onChange={handleInputChange}
               className="w-full bg-gray-700 border border-gray-600 rounded-md shadow-sm py-2 px-3 text-white focus:outline-none focus:ring-teal-500 focus:border-teal-500"
             />
           </div>
@@ -40,8 +92,9 @@ const SystemSettings: React.FC = () => {
             <input
               type="password"
               id="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
+              value={settings.password}
+              onChange={handleInputChange}
+              placeholder="Enter new password to change"
               className="w-full bg-gray-700 border border-gray-600 rounded-md shadow-sm py-2 px-3 text-white focus:outline-none focus:ring-teal-500 focus:border-teal-500"
             />
           </div>
@@ -54,8 +107,8 @@ const SystemSettings: React.FC = () => {
               <input
                 type="number"
                 id="uploadLimit"
-                value={uploadLimit}
-                onChange={(e) => setUploadLimit(Number(e.target.value))}
+                value={settings.uploadLimit}
+                onChange={handleInputChange}
                 className="w-full bg-gray-700 border border-gray-600 rounded-md shadow-sm py-2 px-3 text-white focus:outline-none focus:ring-teal-500 focus:border-teal-500"
               />
             </div>
@@ -66,8 +119,8 @@ const SystemSettings: React.FC = () => {
               <input
                 type="number"
                 id="downloadLimit"
-                value={downloadLimit}
-                onChange={(e) => setDownloadLimit(Number(e.target.value))}
+                value={settings.downloadLimit}
+                onChange={handleInputChange}
                 className="w-full bg-gray-700 border border-gray-600 rounded-md shadow-sm py-2 px-3 text-white focus:outline-none focus:ring-teal-500 focus:border-teal-500"
               />
             </div>

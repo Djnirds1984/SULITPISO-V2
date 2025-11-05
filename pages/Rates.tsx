@@ -1,38 +1,74 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Card from '../components/Card';
 import { Rate } from '../types';
 
-const initialRates: Rate[] = [
-  { id: 1, pisoValue: 1, timeValue: 10, timeUnit: 'minutes' },
-  { id: 2, pisoValue: 5, timeValue: 1, timeUnit: 'hours' },
-  { id: 3, pisoValue: 10, timeValue: 3, timeUnit: 'hours' },
-  { id: 4, pisoValue: 25, timeValue: 1, timeUnit: 'days' },
-];
-
 const Rates: React.FC = () => {
-  const [rates, setRates] = useState<Rate[]>(initialRates);
+  const [rates, setRates] = useState<Rate[]>([]);
+  const [loading, setLoading] = useState(true);
   const [pisoValue, setPisoValue] = useState<number | ''>('');
   const [timeValue, setTimeValue] = useState<number | ''>('');
   const [timeUnit, setTimeUnit] = useState<'minutes' | 'hours' | 'days'>('minutes');
 
-  const addRate = (e: React.FormEvent) => {
+  useEffect(() => {
+    const fetchRates = async () => {
+      try {
+        setLoading(true);
+        const response = await fetch('/api/rates.php');
+        const result = await response.json();
+        if (result.status === 'success') {
+          setRates(result.data);
+        }
+      } catch (error) {
+        console.error("Failed to fetch rates:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchRates();
+  }, []);
+
+  const addRate = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!pisoValue || !timeValue) return;
-    const newRate: Rate = {
-      id: Date.now(),
-      pisoValue,
-      timeValue,
-      timeUnit,
-    };
-    setRates([...rates, newRate]);
-    setPisoValue('');
-    setTimeValue('');
+    const newRate = { pisoValue, timeValue, timeUnit };
+    
+    try {
+      const response = await fetch('/api/rates.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newRate)
+      });
+      const result = await response.json();
+      if (result.status === 'success') {
+        setRates(result.data); // Update with the full list from the server
+        setPisoValue('');
+        setTimeValue('');
+      } else {
+        throw new Error(result.message);
+      }
+    } catch (error) {
+      alert(`Error adding rate: ${(error as Error).message}`);
+    }
   };
   
-  const deleteRate = (id: number) => {
+  const deleteRate = async (id: number) => {
     if(window.confirm('Are you sure you want to delete this rate?')) {
-        setRates(rates.filter(rate => rate.id !== id));
+      try {
+        const response = await fetch('/api/rates.php', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'delete', id: id })
+        });
+        const result = await response.json();
+        if (result.status === 'success') {
+          setRates(result.data); // Update with the new list from the server
+        } else {
+          throw new Error(result.message);
+        }
+      } catch (error) {
+        alert(`Error deleting rate: ${(error as Error).message}`);
+      }
     }
   };
 
@@ -44,26 +80,28 @@ const Rates: React.FC = () => {
         <div className="lg:col-span-2">
           <Card title="Current Rates">
             <div className="overflow-x-auto">
-              <table className="w-full text-left">
-                <thead className="border-b border-gray-600">
-                  <tr>
-                    <th className="p-3 text-sm font-semibold text-gray-300">Piso Value</th>
-                    <th className="p-3 text-sm font-semibold text-gray-300">Time Credit</th>
-                    <th className="p-3 text-sm font-semibold text-gray-300">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {rates.map(rate => (
-                    <tr key={rate.id} className="border-b border-gray-700 hover:bg-gray-700/50">
-                      <td className="p-3 text-white">₱{rate.pisoValue}</td>
-                      <td className="p-3 text-white">{`${rate.timeValue} ${rate.timeUnit}`}</td>
-                      <td className="p-3">
-                        <button onClick={() => deleteRate(rate.id)} className="text-red-400 hover:text-red-300">Delete</button>
-                      </td>
+              {loading ? <p>Loading rates...</p> : (
+                <table className="w-full text-left">
+                  <thead className="border-b border-gray-600">
+                    <tr>
+                      <th className="p-3 text-sm font-semibold text-gray-300">Piso Value</th>
+                      <th className="p-3 text-sm font-semibold text-gray-300">Time Credit</th>
+                      <th className="p-3 text-sm font-semibold text-gray-300">Actions</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {rates.map(rate => (
+                      <tr key={rate.id} className="border-b border-gray-700 hover:bg-gray-700/50">
+                        <td className="p-3 text-white">₱{rate.pisoValue}</td>
+                        <td className="p-3 text-white">{`${rate.timeValue} ${rate.timeUnit}`}</td>
+                        <td className="p-3">
+                          <button onClick={() => deleteRate(rate.id)} className="text-red-400 hover:text-red-300">Delete</button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
             </div>
           </Card>
         </div>

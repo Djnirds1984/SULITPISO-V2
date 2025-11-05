@@ -1,10 +1,11 @@
+
 import React, { useState, useEffect } from 'react';
 import Card from '../components/Card';
 import CodeEditor from '../components/CodeEditor';
 import { DEFAULT_PORTAL_HTML } from '../constants';
 
 const PortalEditor: React.FC = () => {
-  const [htmlContent, setHtmlContent] = useState<string>(DEFAULT_PORTAL_HTML);
+  const [htmlContent, setHtmlContent] = useState<string>('Loading...');
 
   useEffect(() => {
     const fetchPortalHtml = async () => {
@@ -14,9 +15,11 @@ const PortalEditor: React.FC = () => {
           throw new Error('Failed to fetch portal content');
         }
         const data = await response.json();
-        // If backend has content, use it. Otherwise, stick with default loaded in state.
-        if (data.html) {
+        // If backend has content, use it. Otherwise, stick with default.
+        if (data.status === 'success' && data.html) {
           setHtmlContent(data.html);
+        } else {
+          setHtmlContent(DEFAULT_PORTAL_HTML);
         }
       } catch (error) {
         console.error("Could not load portal HTML from backend:", error);
@@ -25,7 +28,7 @@ const PortalEditor: React.FC = () => {
       }
     };
     fetchPortalHtml();
-  }, []); // Empty dependency array means it runs once on mount
+  }, []);
 
   const handleSave = async () => {
     try {
