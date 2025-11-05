@@ -1,0 +1,5 @@
+{
+  "name": "SULITPISO Admin Panel",
+  "description": "An admin dashboard for managing a SULITPISO hotspot device by AJC IT SOLUTIONS. Features include system settings, portal customization, rates management, and more.",
+  "requestFramePermissions": []
+}
