@@ -55,10 +55,10 @@ This guide will help you set up the web server environment required to run both.
 
 We will use the popular Apache web server to host the admin panel and run the PHP backend.
 
-1.  **Install Apache and PHP:**
-    Run this command to install Apache, PHP, and the module that allows Apache to process PHP files.
+1.  **Install Apache, PHP, and Git:**
+    Run this command to install Apache, PHP, the module that allows Apache to process PHP files, and Git for version control.
     ```bash
-    sudo apt install apache2 php libapache2-mod-php -y
+    sudo apt install apache2 php libapache2-mod-php git -y
     ```
 
 2.  **Verify the Installation:**
@@ -73,26 +73,29 @@ We will use the popular Apache web server to host the admin panel and run the PH
 
 ## Step 3: Deploy the SULITPISO Admin Panel
 
-Now, we will copy the React frontend files to the web server's public directory.
+Now, we will clone your project repository directly to the web server's public directory.
 
-1.  **Remove Default Apache Page:**
-    Delete the default `index.html` file created by Apache.
+1.  **Navigate to the Web Root and Clear It:**
+    Go to the web server's directory and remove the default file.
     ```bash
-    sudo rm /var/www/html/index.html
+    cd /var/www/html
+    sudo rm index.html
     ```
 
-2.  **Copy Application Files:**
-    *   You need to transfer the SULITPISO application files ( `index.html`, `index.tsx`, and all other components/pages) to the `/var/www/html/` directory on your Orange Pi or Ubuntu machine.
-    *   An easy way to do this is using a tool like `scp` (Secure Copy) or an SFTP client like FileZilla or WinSCP.
-    *   **Example using `scp` from your development computer:**
-        ```bash
-        # This command copies all files from your current local directory to the remote server
-        scp -r ./* your_user@<your-device-ip>:/var/www/html/
-        ```
-        *(Note: The above command is a conceptual example. You will likely need to adjust paths and may need to upload to a temporary directory first, then use `sudo mv` on the device.)*
+2.  **Clone Your Repository:**
+    Clone the project files from your GitHub repository into the current directory (`.` indicates the current directory).
+    ```bash
+    sudo git clone https://github.com/Djnirds1984/SULITPISO-V2.git .
+    ```
 
-3.  **Set Permissions:**
-    The web server needs permission to read the files. Set the correct ownership and permissions for the web directory.
+3.  **Create a Writable Data Directory:**
+    The backend needs a place to store configuration files. Create a `data` directory for this purpose.
+    ```bash
+    sudo mkdir data
+    ```
+    
+4.  **Set Permissions:**
+    The web server needs permission to read the application files and write to the `data` directory. Set the correct ownership and permissions.
     ```bash
     sudo chown -R www-data:www-data /var/www/html
     sudo chmod -R 755 /var/www/html
@@ -107,18 +110,14 @@ Now, we will copy the React frontend files to the web server's public directory.
     ```
     http://<your-device-ip>
     ```
-    You should now see the SULITPISO login/dashboard page instead of the Apache default page.
+    You should now see the SULITPISO login/dashboard page.
 
 2.  **Building the PHP Backend (Roadmap):**
-    The frontend is now running, but it doesn't do anything yet because the backend is missing. Your next task is to create the PHP scripts that will make the admin panel functional.
+    The frontend is now running and can communicate with PHP scripts in the `/api` directory. Your next tasks will be to expand the backend functionality.
 
-    *   **Create an `api` directory:** Inside `/var/www/html/`, create a directory named `api`.
-        ```bash
-        sudo mkdir /var/www/html/api
-        ```
-    *   **Create PHP files:** Inside this `api` directory, you will create your PHP files (e.g., `settings.php`, `gpio.php`, `rates.php`).
-    *   **Frontend-Backend Communication:** Modify the React components (e.g., in `pages/SystemSettings.tsx`) to make API calls (using `fetch` or `axios`) to your PHP scripts.
+    *   **API Location:** Your PHP files (e.g., `settings.php`, `gpio.php`, `rates.php`) should be placed in the `/var/www/html/api` directory.
+    *   **Frontend-Backend Communication:** Modify the React components (e.g., in `pages/SystemSettings.tsx`) to make API calls (using `fetch`) to your PHP scripts.
         *   **Example:** When the "Save Changes" button in System Settings is clicked, the React app should send a POST request to `http://<your-device-ip>/api/settings.php` with the new settings data.
-    *   **PHP Logic:** The `settings.php` script would then receive this data, validate it, and save it to a file (like a `.json` or `.ini` file) or a database (like SQLite). To control GPIO, your PHP script can use `shell_exec()` to run Python scripts or command-line tools that interact directly with the hardware.
+    *   **PHP Logic:** The `settings.php` script would then receive this data, validate it, and save it to a file inside the `/data` directory. To control GPIO, your PHP script can use `shell_exec()` to run Python scripts or command-line tools that interact directly with the hardware.
 
-Your SULITPISO system is now ready for backend development!
+Your SULITPISO system is now ready for further backend development!

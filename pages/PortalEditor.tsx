@@ -1,5 +1,4 @@
-
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Card from '../components/Card';
 import CodeEditor from '../components/CodeEditor';
 import { DEFAULT_PORTAL_HTML } from '../constants';
@@ -7,10 +6,49 @@ import { DEFAULT_PORTAL_HTML } from '../constants';
 const PortalEditor: React.FC = () => {
   const [htmlContent, setHtmlContent] = useState<string>(DEFAULT_PORTAL_HTML);
 
-  const handleSave = () => {
-    // Mock save
-    console.log(htmlContent);
-    alert('Portal template saved!');
+  useEffect(() => {
+    const fetchPortalHtml = async () => {
+      try {
+        const response = await fetch('/api/portal.php');
+        if (!response.ok) {
+          throw new Error('Failed to fetch portal content');
+        }
+        const data = await response.json();
+        // If backend has content, use it. Otherwise, stick with default loaded in state.
+        if (data.html) {
+          setHtmlContent(data.html);
+        }
+      } catch (error) {
+        console.error("Could not load portal HTML from backend:", error);
+        // Fallback to default if there's an error
+        setHtmlContent(DEFAULT_PORTAL_HTML);
+      }
+    };
+    fetchPortalHtml();
+  }, []); // Empty dependency array means it runs once on mount
+
+  const handleSave = async () => {
+    try {
+      const response = await fetch('/api/portal.php', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ html: htmlContent }),
+      });
+      if (!response.ok) {
+        throw new Error('Server responded with an error');
+      }
+      const result = await response.json();
+      if (result.status === 'success') {
+        alert('Portal template saved successfully!');
+      } else {
+        throw new Error(result.message || 'Failed to save template');
+      }
+    } catch (error) {
+      console.error('Save failed:', error);
+      alert(`Error saving template: ${(error as Error).message}`);
+    }
   };
   
   const handleReset = () => {
